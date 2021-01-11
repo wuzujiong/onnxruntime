@@ -20,7 +20,7 @@ parameters:
   default: false
 
 jobs:
-- template: templates/set-version-number-variables-step.yml
+- template: templates/c-api-cpu.yml
 - job: Linux_C_API_Packaging_GPU_x64
   workspace:
     clean: all
