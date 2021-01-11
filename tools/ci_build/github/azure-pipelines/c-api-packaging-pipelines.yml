@@ -21,6 +21,7 @@ parameters:
 
 jobs:
 - template: templates/c-api-cpu.yml
+  parameters:
     RunOnnxRuntimeTests: ${{ parameters.RunOnnxRuntimeTests }}
     DoCompliance: ${{ parameters.DoCompliance }}
     DoEsrp: ${{ parameters.DoEsrp }}
