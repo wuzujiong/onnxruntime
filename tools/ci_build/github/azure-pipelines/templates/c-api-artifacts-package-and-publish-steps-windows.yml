@@ -16,10 +16,9 @@ parameters:
   type: string
   default: ''
   
-- name: packageName
-  displayName: x86,x64,etc.
+- name: artifactNameNoVersionString
   type: string
-  default: ''
+  default: 'onnxruntime-win-x64'
 
 - name: commitId
   displayName: commitId
@@ -73,4 +72,4 @@ steps:
     - task: PublishPipelineArtifact@1
       inputs:
         targetPath: '$(Build.ArtifactStagingDirectory)\${{parameters.artifactName}}.zip' 
-        artifactName: 'onnxruntime-win-${{parameters.packageName}}'
+        artifactName: '${{parameters.artifactNameNoVersionString}}'

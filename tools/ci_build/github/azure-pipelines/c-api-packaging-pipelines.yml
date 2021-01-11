@@ -138,7 +138,7 @@ jobs:
         buildConfig: RelWithDebInfo
         artifactName: 'onnxruntime-win-$(buildArch)-gpu-$(OnnxRuntimeVersion)'
         commitId: $(OnnxRuntimeGitCommitHash)
-        packageName: $(buildArch)
+        artifactNameNoVersionString: 'onnxruntime-win-$(buildArch)-gpu'
         DoEsrp: ${{ parameters.DoEsrp }}
 
     - ${{ if eq(parameters['DoCompliance'], 'true') }}:
