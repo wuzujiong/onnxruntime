@@ -26,8 +26,8 @@ jobs:
   timeoutInMinutes:  60
   pool: 'Linux-CPU'
   steps:
-    - template: templates/set-version-number-variables-step.yml
-    - template: templates/get-docker-image-steps.yml
+    - template: set-version-number-variables-step.yml
+    - template: get-docker-image-steps.yml
       parameters:
         Dockerfile: tools/ci_build/github/linux/docker/Dockerfile.centos
         Context: tools/ci_build/github/linux/docker
@@ -56,7 +56,7 @@ jobs:
         artifactName: 'drop-linux'
         targetPath: '$(Build.ArtifactStagingDirectory)'
 
-    - template: templates/c-api-artifacts-package-and-publish-steps-posix.yml
+    - template: c-api-artifacts-package-and-publish-steps-posix.yml
       parameters:
           buildConfig: 'Release'
           artifactName: 'onnxruntime-linux-x64-$(OnnxRuntimeVersion)'
@@ -64,10 +64,10 @@ jobs:
           libraryName: 'libonnxruntime.so.$(OnnxRuntimeVersion)'
           commitId: $(OnnxRuntimeGitCommitHash)
 
-    - template: templates/component-governance-component-detection-steps.yml
+    - template: component-governance-component-detection-steps.yml
       parameters :
         condition : 'succeeded'
-    - template: templates/clean-agent-build-directory-step.yml
+    - template: clean-agent-build-directory-step.yml
 
 - job: MacOS_C_API_Packaging_CPU_x64
   workspace:
@@ -76,7 +76,7 @@ jobs:
     vmImage: 'macOS-10.14'
   timeoutInMinutes:  120
   steps:
-    - template: templates/set-version-number-variables-step.yml
+    - template: set-version-number-variables-step.yml
 
     - script: |
         set -e
@@ -94,7 +94,7 @@ jobs:
         brew install libomp
         python3 $(Build.SourcesDirectory)/tools/ci_build/build.py --use_openmp --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --parallel --build_shared_lib --config Release
       displayName: 'Build and Test MacOS'
-    - template: templates/c-api-artifacts-package-and-publish-steps-posix.yml
+    - template: c-api-artifacts-package-and-publish-steps-posix.yml
       parameters:
           buildConfig: 'Release'
           artifactName: 'onnxruntime-osx-x64-$(OnnxRuntimeVersion)'
@@ -114,10 +114,10 @@ jobs:
         artifactName: 'drop-osx'
         targetPath: '$(Build.ArtifactStagingDirectory)'
           
-    - template: templates/component-governance-component-detection-steps.yml
+    - template: component-governance-component-detection-steps.yml
       parameters :
         condition : 'succeeded'
-    - template: templates/clean-agent-build-directory-step.yml
+    - template: clean-agent-build-directory-step.yml
 
 - job: Windows_Packaging_CPU
   workspace:
@@ -159,7 +159,7 @@ jobs:
         buildparameter: --arm64
         runTests: false
   steps:
-    - template: templates/telemetry-steps.yml
+    - template: telemetry-steps.yml
     
     - task: UsePythonVersion@0
       inputs: 
@@ -187,8 +187,8 @@ jobs:
       workingDirectory: '$(Build.SourcesDirectory)\cmake\external\onnx'      
       displayName: 'Install ONNX'    
 
-    - template: templates/set-test-data-variables-step.yml
-    - template: templates/set-version-number-variables-step.yml
+    - template: set-test-data-variables-step.yml
+    - template: set-version-number-variables-step.yml
 
     - task: PythonScript@0
       displayName: 'Generate cmake config'
@@ -223,7 +223,7 @@ jobs:
       workingDirectory: '$(Build.BinariesDirectory)/RelWithDebInfo/RelWithDebInfo'
       displayName: 'List built DLLs' 
 
-    - template: templates/c-api-artifacts-package-and-publish-steps-windows.yml
+    - template: c-api-artifacts-package-and-publish-steps-windows.yml
       parameters:
         buildConfig: RelWithDebInfo
         artifactName: 'onnxruntime-win-$(packageName)-$(OnnxRuntimeVersion)'
@@ -262,11 +262,11 @@ jobs:
           arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --update --cmake_generator "Visual Studio 16 2019" --use_openmp --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter) --cmake_extra_defines onnxruntime_ENABLE_STATIC_ANALYSIS=ON'
           workingDirectory: '$(Build.BinariesDirectory)'
 
-      - template: templates/compliance.yml
+      - template: compliance.yml
         parameters :
           msbuildPlatform: $(msbuildPlatform)
 
-    - template: templates/component-governance-component-detection-steps.yml
+    - template: component-governance-component-detection-steps.yml
       parameters :
         condition : 'succeeded'
 
@@ -382,7 +382,7 @@ jobs:
       arguments: '--configuration RelWithDebInfo -t:CreatePackage -p:Platform="Any CPU" -p:OnnxRuntimeBuildDirectory="$(Build.BinariesDirectory)" -p:OrtPackageId=$(OrtPackageId)'
       workingDirectory: '$(Build.SourcesDirectory)\csharp'
         
-  - template: templates/win-esrp-dll.yml
+  - template: win-esrp-dll.yml
     parameters:
       FolderPath: '$(Build.SourcesDirectory)\csharp\src\Microsoft.ML.OnnxRuntime\bin\RelWithDebInfo'
       DisplayName: 'ESRP - Sign C# dlls'
@@ -408,13 +408,13 @@ jobs:
       Contents: '*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
-  - template: templates/esrp_nuget.yml
+  - template: esrp_nuget.yml
     parameters:
       DisplayName: 'ESRP - sign NuGet package'
       FolderPath: '$(Build.ArtifactStagingDirectory)'
       DoEsrp: ${{ parameters.DoEsrp }}
 
-  - template: templates/validate-nuget.yml
+  - template: validate-nuget.yml
     parameters:
       NugetPath: '$(Build.ArtifactStagingDirectory)'
       NugetPackage: 'Microsoft.ML.OnnxRuntime.*nupkg'
@@ -427,7 +427,7 @@ jobs:
       artifactName: 'drop-signed-nuget'
       targetPath: '$(Build.ArtifactStagingDirectory)'
 
-- template: nuget/templates/test_all_os.yml
+- template: ../nuget/templates/test_all_os.yml
 
 - job: Publish_NuGet_Package_And_Report
   workspace:
@@ -444,14 +444,14 @@ jobs:
   - NuGet_Test_MacOS
   steps:
 
-  - template: templates/set-version-number-variables-step.yml
+  - template: set-version-number-variables-step.yml
 
-  - template: nuget/templates/upload-binary-sizes-from-nuget-package.yml
+  - template: ../nuget/templates/upload-binary-sizes-from-nuget-package.yml
     parameters:
       downloadPath: $(Build.BinariesDirectory)/nuget-artifact/final-package
       gitCommitHash: $(OnnxRuntimeGitCommitHashShort)  
 
-  - template: nuget/templates/get-nuget-package-version-as-variable.yml
+  - template: ../nuget/templates/get-nuget-package-version-as-variable.yml
     parameters:
       packageFolder: '$(Build.BinariesDirectory)/nuget-artifact/final-package'
 
