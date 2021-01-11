@@ -19,6 +19,16 @@ parameters:
   type: boolean
   default: false
 
+- name: AdditionalBuildFlags
+  displayName: Additional build flags for build.py
+  type: string
+  default: --use_openmp
+
+- name: OrtNugetPackageId
+  displayName: Package name for nuget
+  type: string
+  default: 'Microsoft.ML.OnnxRuntime'
+
 jobs:
 - job: Linux_C_API_Packaging_CPU_x64
   workspace:
@@ -40,7 +50,7 @@ jobs:
           docker run --rm --volume /data/onnx:/data/onnx:ro --volume $(Build.SourcesDirectory):/onnxruntime_src --volume $(Build.BinariesDirectory):/build \
           --volume $HOME/.onnx:/home/onnxruntimedev/.onnx -e NIGHTLY_BUILD onnxruntimecentoscpubuild python3 \
           /onnxruntime_src/tools/ci_build/build.py --build_dir /build --config Release \
-          --skip_submodule_sync  --parallel --build_shared_lib --use_openmp
+          --skip_submodule_sync  --parallel --build_shared_lib ${{ parameters.AdditionalBuildFlags }}
         workingDirectory: $(Build.SourcesDirectory)
 
     - script: |
@@ -92,7 +102,7 @@ jobs:
         sudo python3 -m pip install -r '$(Build.SourcesDirectory)/tools/ci_build/github/linux/docker/scripts/requirements.txt'
         sudo xcode-select --switch /Applications/Xcode_10.app/Contents/Developer
         brew install libomp
-        python3 $(Build.SourcesDirectory)/tools/ci_build/build.py --use_openmp --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --parallel --build_shared_lib --config Release
+        python3 $(Build.SourcesDirectory)/tools/ci_build/build.py ${{ parameters.AdditionalBuildFlags }} --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --parallel --build_shared_lib --config Release
       displayName: 'Build and Test MacOS'
     - template: c-api-artifacts-package-and-publish-steps-posix.yml
       parameters:
@@ -194,7 +204,7 @@ jobs:
       displayName: 'Generate cmake config'
       inputs:
         scriptPath: '$(Build.SourcesDirectory)\tools\ci_build\build.py'
-        arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --update --cmake_generator "Visual Studio 16 2019" --use_openmp --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter)'
+        arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --update --cmake_generator "Visual Studio 16 2019" ${{ parameters.AdditionalBuildFlags }} --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter)'
         workingDirectory: '$(Build.BinariesDirectory)'
  
     - task: VSBuild@1
@@ -214,7 +224,7 @@ jobs:
       condition: and(succeeded(), eq(variables.runTests, true))
       inputs:
         scriptPath: '$(Build.SourcesDirectory)\tools\ci_build\build.py'
-        arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --test --cmake_generator "Visual Studio 16 2019" --use_openmp --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter)'
+        arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --test --cmake_generator "Visual Studio 16 2019" ${{ parameters.AdditionalBuildFlags }} --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter)'
         workingDirectory: '$(Build.BinariesDirectory)'
 
     - script: |
@@ -259,7 +269,7 @@ jobs:
         displayName: 'Regenerate cmake config with STATIC_ANALYSIS=ON '
         inputs:
           scriptPath: '$(Build.SourcesDirectory)\tools\ci_build\build.py'
-          arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --update --cmake_generator "Visual Studio 16 2019" --use_openmp --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter) --cmake_extra_defines onnxruntime_ENABLE_STATIC_ANALYSIS=ON'
+          arguments: '--config RelWithDebInfo --enable_lto --disable_rtti --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --update --cmake_generator "Visual Studio 16 2019" ${{ parameters.AdditionalBuildFlags }} --build_shared_lib --enable_onnx_tests --enable_wcos  --use_winml $(TelemetryOption) $(buildparameter) --cmake_extra_defines onnxruntime_ENABLE_STATIC_ANALYSIS=ON'
           workingDirectory: '$(Build.BinariesDirectory)'
 
       - template: compliance.yml
@@ -279,7 +289,7 @@ jobs:
     clean: all
   pool: 'Win-CPU-2019'
   variables:
-    OrtPackageId: 'Microsoft.ML.OnnxRuntime'
+    OrtPackageId: ${{ parameters.OrtNugetPackageId }}
   dependsOn:
   - Linux_C_API_Packaging_CPU_x64
   - MacOS_C_API_Packaging_CPU_x64
