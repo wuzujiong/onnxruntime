@@ -2,12 +2,19 @@ jobs:
 - job: 'build'
   pool: 'Win-CPU-2019'
   strategy:
-    maxParallel: 2
     matrix:
       debug:
         BuildConfig: 'Debug'
+        AdditionalBuildFlags: '--use_openmp'
+        RunOnnxRuntimeTests: true
       release:
         BuildConfig: 'RelWithDebInfo'
+        AdditionalBuildFlags: '--use_openmp'
+        RunOnnxRuntimeTests: true
+      debug_static_analyzer:
+        BuildConfig: 'Debug'
+        AdditionalBuildFlags: '--cmake_extra_defines onnxruntime_ENABLE_STATIC_ANALYSIS=ON'
+        RunOnnxRuntimeTests: false
   variables:
     OrtPackageId: 'Microsoft.ML.OnnxRuntime'
     MsbuildArguments: '-detailedsummary -maxcpucount -consoleloggerparameters:PerformanceSummary'
@@ -61,6 +68,7 @@ jobs:
      python -m pip uninstall -y onnx
      Get-ChildItem -Path dist/*.whl | foreach {pip --disable-pip-version-check install --upgrade $_.fullname}   
     workingDirectory: '$(Build.SourcesDirectory)\cmake\external\onnx'
+    condition: and(succeeded(), eq(variables.RunOnnxRuntimeTests, true))
     displayName: 'Install ONNX'
 
   - task: NuGetToolInstaller@0
@@ -99,6 +107,7 @@ jobs:
 
   - task: PythonScript@0
     displayName: 'Build wheel'
+    condition: and(succeeded(), eq(variables.RunOnnxRuntimeTests, true))
     inputs:
       scriptPath: '$(Build.SourcesDirectory)\setup.py'
       arguments: 'bdist_wheel'
@@ -107,7 +116,7 @@ jobs:
   - template: templates/set-test-data-variables-step.yml
 
   - task: DotNetCoreCLI@2
-    displayName: 'Restore nuget packages'
+    displayName: 'Restore nuget packages'    
     inputs:
       command: restore
       projects: '$(Build.SourcesDirectory)\csharp\OnnxRuntime.CSharp.sln'
@@ -116,7 +125,7 @@ jobs:
       workingDirectory: '$(Build.SourcesDirectory)\csharp'
 
   - task: DotNetCoreCLI@2
-    displayName: 'Build C#'    
+    displayName: 'Build C#'
     inputs:
       command: build
       projects: '$(Build.SourcesDirectory)\csharp\OnnxRuntime.CSharp.sln'
@@ -126,7 +135,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: 'Test C#'
-    condition: and(succeeded(), eq(variables['BuildConfig'], 'RelWithDebInfo'))
+    condition: and(and(succeeded(), eq(variables['BuildConfig'], 'RelWithDebInfo')), eq(variables.RunOnnxRuntimeTests, true))
     inputs:
       command: test
       projects: '$(Build.SourcesDirectory)\csharp\test\Microsoft.ML.OnnxRuntime.Tests\Microsoft.ML.OnnxRuntime.Tests.csproj'
@@ -144,6 +153,7 @@ jobs:
      python $(Build.SourcesDirectory)\tools\ci_build\build.py --config $(BuildConfig) --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --build_shared_lib --build_nodejs --test --cmake_generator "Visual Studio 16 2019"  --use_dnnl --build_wheel --enable_onnx_tests
    
     workingDirectory: '$(Build.BinariesDirectory)\$(BuildConfig)\$(BuildConfig)'
+    condition: and(succeeded(), eq(variables.RunOnnxRuntimeTests, true))
     displayName: 'Run tests'
  
   - task: PublishTestResults@2
@@ -152,7 +162,7 @@ jobs:
       testResultsFiles: '**/*.results.xml'
       searchFolder: '$(Build.BinariesDirectory)'
       testRunTitle: 'Unit Test Run'
-    condition: succeededOrFailed()
+    condition: and(succeededOrFailed(), eq(variables.RunOnnxRuntimeTests, true))
 
   - template: templates/component-governance-component-detection-steps.yml
     parameters :
