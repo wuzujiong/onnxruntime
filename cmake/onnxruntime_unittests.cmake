@@ -420,6 +420,10 @@ if(onnxruntime_USE_ROCM)
   list(APPEND onnxruntime_test_providers_dependencies onnxruntime_providers_rocm)
 endif()
 
+if(onnxruntime_USE_COREML)
+  list(APPEND onnxruntime_test_providers_dependencies onnxruntime_providers_coreml)
+endif()
+
 file(GLOB_RECURSE onnxruntime_test_tvm_src CONFIGURE_DEPENDS
   "${ONNXRUNTIME_ROOT}/test/tvm/*.h"
   "${ONNXRUNTIME_ROOT}/test/tvm/*.cc"
@@ -458,6 +462,7 @@ set(ONNXRUNTIME_TEST_LIBS
     ${PROVIDERS_ACL}
     ${PROVIDERS_ARMNN}
     ${PROVIDERS_ROCM}
+    ${PROVIDERS_COREML}
     onnxruntime_optimizer
     onnxruntime_providers
     onnxruntime_util

@@ -72,8 +72,8 @@ if(onnxruntime_USE_TENSORRT)
   list(APPEND ONNXRUNTIME_PROVIDER_NAMES tensorrt)
 endif()
 if(onnxruntime_USE_COREML)
-  #set(PROVIDERS_COREML onnxruntime_providers_coreml)
-  #list(APPEND ONNXRUNTIME_PROVIDER_NAMES coreml)
+  set(PROVIDERS_COREML onnxruntime_providers_coreml)
+  list(APPEND ONNXRUNTIME_PROVIDER_NAMES coreml)
 endif()
 if(onnxruntime_USE_NNAPI_BUILTIN)
   set(PROVIDERS_NNAPI onnxruntime_providers_nnapi)
@@ -644,22 +644,41 @@ if (onnxruntime_USE_OPENVINO)
 endif()
 
 if (onnxruntime_USE_COREML)
+  # Compile CoreML proto definition to ${CMAKE_CURRENT_BINARY_DIR}/coreml
   set(COREML_PROTO_ROOT ${PROJECT_SOURCE_DIR}/external/coremltools/mlmodel/format)
-
   file(GLOB coreml_proto_srcs
     "${COREML_PROTO_ROOT}/*.proto"
   )
-
   add_library(onnxruntime_coreml_proto ${coreml_proto_srcs})
   target_include_directories(onnxruntime_coreml_proto PUBLIC $<TARGET_PROPERTY:protobuf::libprotobuf,INTERFACE_INCLUDE_DIRECTORIES> "${CMAKE_CURRENT_BINARY_DIR}")
   target_compile_definitions(onnxruntime_coreml_proto PUBLIC $<TARGET_PROPERTY:protobuf::libprotobuf,INTERFACE_COMPILE_DEFINITIONS>)
-
   set(_src_sub_dir "coreml/")
   onnxruntime_protobuf_generate(
     APPEND_PATH
     GEN_SRC_SUB_DIR ${_src_sub_dir}
     IMPORT_DIRS ${COREML_PROTO_ROOT}
     TARGET onnxruntime_coreml_proto)
+
+  add_compile_definitions(USE_COREML=1)
+  file(GLOB
+    onnxruntime_providers_coreml_cc_srcs_top CONFIGURE_DEPENDS
+    "${ONNXRUNTIME_ROOT}/core/providers/coreml/*.h"
+    "${ONNXRUNTIME_ROOT}/core/providers/coreml/*.cc"
+  )
+
+  # Add builder source code
+  # Add coreML objc source code
+
+  set(onnxruntime_providers_coreml_cc_srcs ${onnxruntime_providers_coreml_cc_srcs_top})
+  source_group(TREE ${ONNXRUNTIME_ROOT}/core FILES ${onnxruntime_providers_coreml_cc_srcs})
+  add_library(onnxruntime_providers_coreml ${onnxruntime_providers_coreml_cc_srcs})
+  onnxruntime_add_include_to_target(onnxruntime_providers_coreml onnxruntime_common onnxruntime_framework onnx onnx_proto protobuf::libprotobuf-lite flatbuffers)
+  target_link_libraries(onnxruntime_providers_coreml "-framework Foundation")
+  add_dependencies(onnxruntime_providers_coreml onnx ${onnxruntime_EXTERNAL_DEPENDENCIES})
+  set_target_properties(onnxruntime_providers_coreml PROPERTIES CXX_STANDARD_REQUIRED ON)
+  set_target_properties(onnxruntime_providers_coreml PROPERTIES FOLDER "ONNXRuntime")
+  target_include_directories(onnxruntime_providers_coreml PRIVATE ${ONNXRUNTIME_ROOT} ${coreml_INCLUDE_DIRS})
+  set_target_properties(onnxruntime_providers_coreml PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 
 if (onnxruntime_USE_NNAPI_BUILTIN)
