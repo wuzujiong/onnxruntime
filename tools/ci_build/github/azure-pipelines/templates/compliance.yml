@@ -5,14 +5,14 @@ parameters:
   default: x64
   
 steps:
-- task: securedevelopmentteam.vss-secure-development-tools.build-task-credscan.CredScan@2
+- task: CredScan@2
   displayName: 'Run CredScan'
   inputs:
     toolMajorVersion: V2
     debugMode: false
   continueOnError: true
 
-- task: securedevelopmentteam.vss-secure-development-tools.build-task-binskim.BinSkim@3
+- task: BinSkim@3
   displayName: 'Run BinSkim'
   inputs:
     arguments: 'analyze $(Build.BinariesDirectory)\RelWithDebInfo\RelWithDebInfo\*.dll  --recurse --verbose'
@@ -50,7 +50,7 @@ steps:
   continueOnError: true
 
 - task: securedevelopmentteam.vss-secure-development-tools.build-task-uploadtotsa.TSAUpload@1
-  #TODO: uncomment it condition: and (succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  condition: and (succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
   displayName: 'TSA Upload'
   inputs:
     tsaVersion: TsaV2
