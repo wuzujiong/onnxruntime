@@ -8,6 +8,8 @@
 #include "core/graph/graph_viewer.h"
 #include "core/session/onnxruntime_cxx_api.h"
 
+#include "model/model.h"
+
 namespace onnxruntime {
 
 constexpr const char* COREML = "CoreML";
