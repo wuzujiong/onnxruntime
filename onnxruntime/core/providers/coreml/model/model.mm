@@ -15,7 +15,7 @@
 #define API_AVAILABLE_OS_VERSIONS API_AVAILABLE(macos(10.15), ios(13))
 #define HAS_VALID_OS_VERSION @available(macOS 10.15, iOS 13, *)
 
-// Model input for CoreML model
+// Model input for a CoreML model
 // All the input onnx tensors values will be converted to MLMultiArray(s)
 @interface OnnxTensorFeatureProvider : NSObject <MLFeatureProvider> {
   const std::unordered_map<std::string, onnxruntime::coreml::OnnxTensorData>* inputs_;
@@ -28,6 +28,10 @@
 
 @end
 
+// Execution for a CoreML model, it performs
+// 1. Compile the model by given path for execution
+// 2. Predict using given OnnxTensorFeatureProvider input and copy the output data back ORT
+// 3. The compiled model will be removed in dealloc or removed using cleanup function
 @interface CoreMLExecution : NSObject {
   NSString* coreml_model_path_;
   NSString* compiled_model_path_;
@@ -126,6 +130,8 @@
   if (compiled_model_path_ != nil) {
     NSError* error = nil;
     [[NSFileManager defaultManager] removeItemAtPath:compiled_model_path_ error:&error];
+    compiled_model_path_ = nil;
+
     if (error != nil) {
       NSLog(@"Failed cleaning up compiled model: %@", [error localizedDescription]);
     }
@@ -193,12 +199,16 @@
     MLFeatureValue* output_value =
         [output_feature featureValueForName:output_name];
 
+    if (output_value == nil) {
+      return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "output_feature has no value for ",
+                             [output_name cStringUsingEncoding:NSUTF8StringEncoding]);
+    }
+
     auto* data = [output_value multiArrayValue];
     auto* model_output_data = data.dataPointer;
     if (model_output_data == nullptr) {
-      return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "model_output_data for ",
-                             [output_name cStringUsingEncoding:NSUTF8StringEncoding],
-                             " is null");
+      return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "model_output_data has no data for ",
+                             [output_name cStringUsingEncoding:NSUTF8StringEncoding]);
     }
 
     auto& output_tensor = output.second;

@@ -9,6 +9,7 @@
 #include "core/session/onnxruntime_cxx_api.h"
 
 #include "model/model.h"
+#include "builders/model_builder.h"
 
 namespace onnxruntime {
 
@@ -37,10 +38,11 @@ CoreMLExecutionProvider::~CoreMLExecutionProvider() {
 }
 
 std::vector<std::unique_ptr<ComputeCapability>>
-CoreMLExecutionProvider::GetCapability(const onnxruntime::GraphViewer& /* graph_view */,
+CoreMLExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph_view,
                                        const std::vector<const KernelRegistry*>& /*kernel_registries*/) const {
+  coreml::ModelBuilder mb(graph_view);
+  (void)mb;
   std::vector<std::unique_ptr<ComputeCapability>> result;
-
   return result;
 }
 
