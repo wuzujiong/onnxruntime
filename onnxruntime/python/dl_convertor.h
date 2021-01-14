@@ -6,8 +6,7 @@
 #include "core/framework/ml_value.h"
 #include "python/dlpack.h"
 
-// this convertor will:
-// 1) take a OrtValue object and wrap it in the DLPack tensor
+// this convertor will take a OrtValue object and wrap it in the DLPack tensor.
 
 namespace onnxruntime {
 namespace python {

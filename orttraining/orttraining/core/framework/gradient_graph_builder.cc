@@ -3,6 +3,7 @@
 
 #include "core/common/logging/logging.h"
 #include "core/graph/op.h"
+#include "core/graph/model.h"
 #include "core/graph/schema_registry.h"
 #include "orttraining/core/framework/gradient_graph_builder.h"
 #include "orttraining/core/graph/gradient_builder_registry.h"
@@ -140,7 +141,8 @@ Status GradientGraphBuilder::CheckNodeArgsReachable() const {
   return Status::OK();
 }
 
-Status GradientGraphBuilder::Build(const std::unordered_set<std::string>* p_initializer_names_to_preserve) {
+Status GradientGraphBuilder::Build(const std::unordered_set<std::string>* p_initializer_names_to_preserve,
+                                   Graph* p_graph_to_augment) {
   auto opt_ret = graph_transformation_mgr_.ApplyTransformers(*graph_, TransformerLevel::Level2, logger_);
   ORT_RETURN_IF_ERROR(opt_ret);
 
@@ -244,7 +246,8 @@ Status GradientGraphBuilder::Build(const std::unordered_set<std::string>* p_init
     }
   }
 
-  return GraphAugmenter::AugmentGraph(*graph_, gradient_graph_defs, p_initializer_names_to_preserve);
+  return GraphAugmenter::AugmentGraph(p_graph_to_augment ? *p_graph_to_augment : *graph_, gradient_graph_defs,
+                                      p_initializer_names_to_preserve);
 }
 
 }  // namespace training

@@ -181,7 +181,8 @@ class ORTModule(torch.nn.Module):
         new_input_shape = [list(input.size()) for input in inputs if input is not None]
         if self._current_input_shape is None or self._current_input_shape != new_input_shape:
             self._current_input_shape = new_input_shape
-            self._module_gradient_graph_builder.build_and_split(self._current_input_shape)
+            #self._module_gradient_graph_builder.build_and_split(self._current_input_shape)
+            self._module_gradient_graph_builder.build_and_split()
             self._onnx_forward = onnx.load_model_from_string(self._module_gradient_graph_builder.get_forward_model())
             self._onnx_backward = onnx.load_model_from_string(self._module_gradient_graph_builder.get_backward_model())
             self._onnx_graphs_info = self._module_gradient_graph_builder.get_split_graphs_info()
@@ -265,11 +266,10 @@ class ORTModule(torch.nn.Module):
                     for backward_output in backward_outputs[:len(self._onnx_graphs_info.initializer_grad_names_to_train)]]
                 return tuple(results)
 
-        proc_inputs = [data for data in inputs if data is not None]
-        return _ORTModuleFunction.apply(*self._convert_forward_input_to_list(*proc_inputs, **kwargs))
+        return _ORTModuleFunction.apply(*self._convert_forward_input_to_list(self._original_module, *inputs, **kwargs))
 
     @_utils.timeit(enabled=__TEMP_ENABLE_METHOD_TIMING__)
-    def _convert_forward_input_to_list(self, *inputs, **kwargs):
+    def _convert_forward_input_to_list(self, module, *inputs, **kwargs):
         '''Creates forward `*inputs` list from user input and PyTorch initializers
 
         TODO: **kwargs is not supported
@@ -283,7 +283,8 @@ class ORTModule(torch.nn.Module):
             are the same as the original PyTorch model
         '''
         # User inputs
-        result = list(inputs[:len(self._onnx_graphs_info.user_input_names)])
+        _, input_tensors = ORTModule._extract_user_inputs(module, *inputs, **kwargs)
+        result = [tensor for tensor in input_tensors if tensor is not None]
 
         # Initializers
         for param in self._original_module.named_parameters():
@@ -360,9 +361,10 @@ class ORTModule(torch.nn.Module):
         f = io.BytesIO()
 
         # Deepcopy inputs, since input values may change after model run.
-        sample_inputs_copy = copy.deepcopy(inputs)
+        # sample_inputs_copy = copy.deepcopy(inputs)
 
         # Ignore optional *inputs explicitly specified as None
+        '''
         sig = signature(module.forward)
         all_input_names = sig.parameters.keys()
         input_names = []
@@ -373,19 +375,42 @@ class ORTModule(torch.nn.Module):
                 dynamic_axes[name] = {}
                 for dim_idx in range(len(inputs[input_idx].shape)):
                     dynamic_axes[name].update({dim_idx : f'input{input_idx}_dim{dim_idx}'})
+        '''
 
         # TODO: Support contrib OPs support? user model has no hint
         # from onnxruntime.training import register_custom_ops_pytorch_exporter
         # register_custom_ops_pytorch_exporter.register_custom_op()
 
+        input_names, input_tensors = ORTModule._extract_user_inputs(module, *inputs, **kwargs)
+
         # Export torch.nn.Module to ONNX
         torch.onnx.export(module,
-                          tuple(sample_inputs_copy),
+                          tuple(input_tensors),
                           f,
                           input_names=input_names,
                           opset_version=ONNX_OPSET_VERSION,
                           do_constant_folding=False,
-                          training=torch.onnx.TrainingMode.TRAINING,
-                          dynamic_axes=dynamic_axes)
+                          training=torch.onnx.TrainingMode.TRAINING,)
+                          #dynamic_axes=dynamic_axes)
 
         return onnx.load_model_from_string(f.getvalue())
+
+
+    @staticmethod
+    def _extract_user_inputs(module, *inputs, **kwargs):
+        sig = signature(module.forward)
+        all_input_names = sig.parameters.keys()
+        input_names = []
+        input_tensors = []
+        for idx, name in enumerate(all_input_names):
+            tensor = None
+            if idx < len(inputs) and inputs[idx] is not None:
+                input_names.append(name)
+                tensor = inputs[idx]
+            if name in kwargs:
+                if tensor is None:
+                    input_names.append(name)
+                tensor = kwargs[name]
+            input_tensors.append(tensor)
+
+        return input_names, input_tensors
