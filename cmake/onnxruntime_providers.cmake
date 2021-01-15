@@ -644,6 +644,8 @@ if (onnxruntime_USE_OPENVINO)
 endif()
 
 if (onnxruntime_USE_COREML)
+  add_compile_definitions(USE_COREML=1)
+
   # Compile CoreML proto definition to ${CMAKE_CURRENT_BINARY_DIR}/coreml
   set(COREML_PROTO_ROOT ${PROJECT_SOURCE_DIR}/external/coremltools/mlmodel/format)
   file(GLOB coreml_proto_srcs
@@ -652,6 +654,7 @@ if (onnxruntime_USE_COREML)
   add_library(onnxruntime_coreml_proto ${coreml_proto_srcs})
   target_include_directories(onnxruntime_coreml_proto PUBLIC $<TARGET_PROPERTY:protobuf::libprotobuf,INTERFACE_INCLUDE_DIRECTORIES> "${CMAKE_CURRENT_BINARY_DIR}")
   target_compile_definitions(onnxruntime_coreml_proto PUBLIC $<TARGET_PROPERTY:protobuf::libprotobuf,INTERFACE_COMPILE_DEFINITIONS>)
+  set_target_properties(onnxruntime_coreml_proto PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
   set(_src_sub_dir "coreml/")
   onnxruntime_protobuf_generate(
     APPEND_PATH
@@ -659,25 +662,26 @@ if (onnxruntime_USE_COREML)
     IMPORT_DIRS ${COREML_PROTO_ROOT}
     TARGET onnxruntime_coreml_proto)
 
-  add_compile_definitions(USE_COREML=1)
   file(GLOB
     onnxruntime_providers_coreml_cc_srcs_top CONFIGURE_DEPENDS
     "${ONNXRUNTIME_ROOT}/core/providers/coreml/*.h"
     "${ONNXRUNTIME_ROOT}/core/providers/coreml/*.cc"
   )
 
+  # Add builder source code
   file(GLOB_RECURSE
     onnxruntime_providers_coreml_cc_srcs_nested CONFIGURE_DEPENDS
     "${ONNXRUNTIME_ROOT}/core/providers/coreml/builders/*.h"
     "${ONNXRUNTIME_ROOT}/core/providers/coreml/builders/*.cc"
   )
 
-  # Add builder source code
-  # Add coreML objc source code
+  # Add CoreML objective c++ source code
   file(GLOB
     onnxruntime_providers_coreml_objcc_srcs CONFIGURE_DEPENDS
     "${ONNXRUNTIME_ROOT}/core/providers/coreml/model/model.h"
     "${ONNXRUNTIME_ROOT}/core/providers/coreml/model/model.mm"
+    "${ONNXRUNTIME_ROOT}/core/providers/coreml/model/host_utils.h"
+    "${ONNXRUNTIME_ROOT}/core/providers/coreml/model/host_utils.mm"
   )
 
   set_source_files_properties(

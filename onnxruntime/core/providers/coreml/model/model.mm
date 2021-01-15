@@ -5,15 +5,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "model.h"
 #include "core/common/common.h"
 #include "core/graph/onnx_protobuf.h"
+#include "host_utils.h"
+#include "model.h"
 
 #import <CoreML/CoreML.h>
 #import <Foundation/Foundation.h>
-
-#define API_AVAILABLE_OS_VERSIONS API_AVAILABLE(macos(10.15), ios(13))
-#define HAS_VALID_OS_VERSION @available(macOS 10.15, iOS 13, *)
 
 // Model input for a CoreML model
 // All the input onnx tensors values will be converted to MLMultiArray(s)
@@ -257,7 +255,7 @@ Execution::Execution(const std::string& path) {
 Status Execution::LoadModel() {
   if (model_loaded)
     return Status::OK();
-  if (HAS_VALID_OS_VERSION) {
+  if (HAS_VALID_BASE_OS_VERSION) {
     auto status = [execution_ loadModel];
     model_loaded = status.IsOK();
     return status;
@@ -270,7 +268,7 @@ Status Execution::Predict(const std::unordered_map<std::string, OnnxTensorData>&
                           const std::unordered_map<std::string, OnnxTensorData>& outputs) {
   ORT_RETURN_IF_NOT(model_loaded, "Execution::Predict requires Execution::LoadModel");
 
-  if (HAS_VALID_OS_VERSION) {
+  if (HAS_VALID_BASE_OS_VERSION) {
     return [execution_ predict:inputs outputs:outputs];
   }
 
