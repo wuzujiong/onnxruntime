@@ -103,5 +103,8 @@ Status reduce_matrix_rows(const TIn* input, TOut* output, int m, int n, bool res
 template <typename TIn, typename TOut>
 Status reduce_matrix_columns(const TIn* input, TOut* output, int m, int n, void* buffer, size_t buffer_size);
 
+template <typename TIn, typename TOut>
+Status reduce_mean_matrix_columns(const TIn* input, TOut* output, int m, int n, void* buffer, size_t buffer_size);
+
 }  // namespace rocm
 }  // namespace onnxruntime
