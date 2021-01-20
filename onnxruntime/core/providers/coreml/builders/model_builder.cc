@@ -86,7 +86,7 @@ Status ModelBuilder::RegisterModelInputOutput(const NodeArg& node_arg, bool is_i
       // Since all the input output of CoreML EP is MultiArray, we will make the scalar input output as a {1} MultiArray
       shape.push_back(1);
 
-      // we need to change the shapes of these scalar outputs back to {} when NNAPI EP returns these values to ORT
+      // we need to change the shapes of these scalar outputs back to {} when CoreML EP returns these values to ORT
       if (!is_input) {
         AddScalarOutput(name);
       }

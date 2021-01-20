@@ -18,7 +18,7 @@ class IOpBuilder {
   // which will not be copied
   virtual void AddInitializersToSkip(ModelBuilder& model_builder, const Node& node) const = 0;
 
-  // Add the operator to NNAPI model
+  // Add the operator to CoreML model
   virtual Status AddToModelBuilder(ModelBuilder& model_builder, const Node& node) const ORT_MUST_USE_RESULT = 0;
 
   // Operator support related
