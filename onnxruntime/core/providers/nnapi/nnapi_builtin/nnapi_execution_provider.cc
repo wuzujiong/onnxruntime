@@ -10,7 +10,6 @@
 #include "core/graph/graph_viewer.h"
 #include "core/session/onnxruntime_cxx_api.h"
 #include "nnapi_lib/nnapi_implementation.h"
-#include "objc/objc_wrapper.h"
 
 #ifdef __ANDROID__
 #include "model.h"
@@ -38,9 +37,6 @@ NnapiExecutionProvider::NnapiExecutionProvider(uint32_t nnapi_flags)
       });
 
   InsertAllocator(CreateAllocator(cpu_memory_info));
-
-  ObjCWrapper wrapper_("objc test");
-  wrapper_.print();
 }
 
 NnapiExecutionProvider::~NnapiExecutionProvider() {}
