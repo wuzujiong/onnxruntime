@@ -53,8 +53,7 @@ class ModelBuilder {
   Status AddOperations() ORT_MUST_USE_RESULT;
   Status RegisterModelInputs() ORT_MUST_USE_RESULT;
   Status RegisterModelOutputs() ORT_MUST_USE_RESULT;
-  Status RegisterModelInputOutput(COREML_SPEC::FeatureDescription& input_output,
-                                  const NodeArg& node_arg, bool is_input);
+  Status RegisterModelInputOutput(const NodeArg& node_arg, bool is_input) ORT_MUST_USE_RESULT;
 
   // Record the onnx scalar output names
   void AddScalarOutput(const std::string& output_name);

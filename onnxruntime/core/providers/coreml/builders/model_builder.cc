@@ -59,8 +59,12 @@ Status ModelBuilder::RegisterInitializers() {
   return Status::OK();
 }
 
-Status ModelBuilder::RegisterModelInputOutput(COREML_SPEC::FeatureDescription& input_output,
-                                              const NodeArg& node_arg, bool is_input) {
+Status ModelBuilder::RegisterModelInputOutput(const NodeArg& node_arg, bool is_input) {
+  auto* model_description = coreml_model_->mutable_description();
+  auto& input_output = is_input
+                           ? *model_description->mutable_output()->Add()
+                           : *model_description->mutable_output()->Add();
+
   const auto& name = node_arg.Name();
   const std::string input_output_type = is_input ? "input" : "output";
 
@@ -127,62 +131,8 @@ Status ModelBuilder::RegisterModelInputOutput(COREML_SPEC::FeatureDescription& i
 }
 
 Status ModelBuilder::RegisterModelInputs() {
-  auto* model_description = coreml_model_->mutable_description();
   for (const auto* node_arg : graph_viewer_.GetInputs()) {
-    const auto& input_name = node_arg->Name();
-
-    {  // input should not be an initializer
-      if (Contains(GetInitializerTensors(), input_name))
-        continue;
-    }
-
-    auto& input = *model_description->mutable_output()->Add();
-    input.set_name(input_name);
-    auto* multi_array = input.mutable_type()->mutable_multiarraytype();
-    std::vector<int64_t> shape;
-
-    {  // input shape
-      const auto* shape_proto = node_arg->Shape();
-      ORT_RETURN_IF_NOT(shape_proto != nullptr, "shape_proto cannot be null for input: ", input_name);
-      const auto& dims = shape_proto->dim();
-      if (dims.empty()) {
-        // If we have an empty shape, this is a scalar input,
-        // Since all the input output of CoreML EP is MultiArray, we will make the scalar input as a {1} MultiArray
-        shape.push_back(1);
-      } else {
-        shape.reserve(dims.size());
-        for (const auto& dim : dims) {
-          ORT_RETURN_IF_NOT(dim.has_dim_value(), "Dynamic shape is not supported yet, for input, ", node_arg->Name());
-          shape.push_back(dim.dim_value());
-        }
-      }
-    }
-
-    *multi_array->mutable_shape() = {shape.cbegin(), shape.cend()};
-
-    int32_t data_type;
-    {  // input type
-      const auto* type_proto = node_arg->TypeAsProto();
-      if (!type_proto || !type_proto->tensor_type().has_elem_type()) {
-        return ORT_MAKE_STATUS(ONNXRUNTIME, INVALID_ARGUMENT,
-                               "The input of graph doesn't have elem_type: ", input_name);
-      }
-
-      data_type = type_proto->tensor_type().elem_type();
-      switch (data_type) {
-        case ONNX_NAMESPACE::TensorProto_DataType_FLOAT:
-          multi_array->set_datatype(COREML_SPEC::ArrayFeatureType::FLOAT32);
-          break;
-        default: {
-          // TODO: support other type
-          return ORT_MAKE_STATUS(ONNXRUNTIME, INVALID_ARGUMENT,
-                                 "The input of graph doesn't have valid type, name: ", input_name,
-                                 " type: ", type_proto->tensor_type().elem_type());
-        }
-      }
-    }
-
-    input_output_info_.emplace(input_name, OnnxTensorInfo{data_type, shape});
+    ORT_RETURN_IF_ERROR(RegisterModelInputOutput(*node_arg, true /* is_input */));
   }
 
   return Status::OK();
@@ -204,51 +154,8 @@ Status ModelBuilder::AddOperations() {
 }
 
 Status ModelBuilder::RegisterModelOutputs() {
-  auto* model_description = coreml_model_->mutable_description();
   for (const auto* node_arg : graph_viewer_.GetOutputs()) {
-    const auto& output_name = node_arg->Name();
-
-    auto& output = *model_description->mutable_output()->Add();
-    output.set_name(output_name);
-    auto* multi_array = output.mutable_type()->mutable_multiarraytype();
-
-    {  // output shape
-       // Since for now all the shapes are deterministic for CoreML, it's impossible we can have unknown output shape
-      const auto* shape_proto = node_arg->Shape();
-      ORT_RETURN_IF(shape_proto == nullptr, "shape_proto cannot be null for output: ", output_name);
-      const auto& dims = shape_proto->dim();
-      if (dims.empty()) {
-        // In CoreML scalar output will be a {1} MultiArray
-        // we need to change the shapes of these scalar outputs back to {} when NNAPI EP returns these values to ORT
-        AddScalarOutput(output_name);
-        multi_array->mutable_shape()->Add(1);
-      } else {
-        for (const auto& dim : dims) {
-          ORT_RETURN_IF_NOT(dim.has_dim_value(), "Dynamic shape is not supported yet, for output, ", node_arg->Name());
-          multi_array->mutable_shape()->Add(dim.dim_value());
-        }
-      }
-    }
-
-    {  // output type
-      const auto* type_proto = node_arg->TypeAsProto();
-      if (!type_proto || !type_proto->tensor_type().has_elem_type()) {
-        return ORT_MAKE_STATUS(ONNXRUNTIME, INVALID_ARGUMENT,
-                               "The output of graph doesn't have elem_type: ", output_name);
-      }
-
-      switch (type_proto->tensor_type().elem_type()) {
-        case ONNX_NAMESPACE::TensorProto_DataType_FLOAT:
-          multi_array->set_datatype(COREML_SPEC::ArrayFeatureType::FLOAT32);
-          break;
-        default: {
-          // TODO: support other type
-          return ORT_MAKE_STATUS(ONNXRUNTIME, INVALID_ARGUMENT,
-                                 "The output of graph doesn't have valid type, name: ", output_name,
-                                 " type: ", type_proto->tensor_type().elem_type());
-        }
-      }
-    }
+    ORT_RETURN_IF_ERROR(RegisterModelInputOutput(*node_arg, false /* is_input */));
   }
 
   return Status::OK();
