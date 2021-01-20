@@ -12,23 +12,34 @@
 // }
 // }  // namespace CoreML
 
-namespace onnxruntime {
+namespace COREML_SPEC = CoreML::Specification;
 
+namespace onnxruntime {
 namespace coreml {
+
+class IOpBuilder;
+class Model;
+struct OnnxTensorInfo;
 
 class ModelBuilder {
  public:
   ModelBuilder(const GraphViewer& graph_viewer);
   ~ModelBuilder() = default;
 
-  Status Compile(std::unique_ptr<Model>& model) ORT_MUST_USE_RESULT;
+  Status Compile(std::unique_ptr<Model>& model, const std::string& path) ORT_MUST_USE_RESULT;
+  Status SaveCoreMLModel(const std::string& path);
 
   // Accessors for members
   const GraphViewer& GetGraphViewer() const { return graph_viewer_; }
+  const InitializedTensorSet& GetInitializerTensors() const { return graph_viewer_.GetAllInitializedTensors(); }
+
+  void AddLayer(COREML_SPEC::NeuralNetworkLayer* layer);
 
  private:
   const GraphViewer& graph_viewer_;
   std::unique_ptr<CoreML::Specification::Model> coreml_model_;
+  std::unordered_set<std::string> scalar_outputs_;
+  std::unordered_map<std::string, OnnxTensorInfo> input_output_info_;
 
   // Convert the onnx model to CoreML::Specification::Model
   Status Prepare() ORT_MUST_USE_RESULT;
@@ -39,9 +50,16 @@ class ModelBuilder {
   // Copy and process all the initializers to CoreML model
   Status RegisterInitializers() ORT_MUST_USE_RESULT;
 
-  Status RegisterModelInputs() ORT_MUST_USE_RESULT;
   Status AddOperations() ORT_MUST_USE_RESULT;
+  Status RegisterModelInputs() ORT_MUST_USE_RESULT;
   Status RegisterModelOutputs() ORT_MUST_USE_RESULT;
+  Status RegisterModelInputOutput(COREML_SPEC::FeatureDescription& input_output,
+                                  const NodeArg& node_arg, bool is_input);
+
+  // Record the onnx scalar output names
+  void AddScalarOutput(const std::string& output_name);
+
+  static const IOpBuilder* GetOpBuilder(const Node& node);
 };
 
 }  // namespace coreml

@@ -22,7 +22,24 @@ int BinaryOpBuilder::GetMinSupportedOpSet(const Node& /* node */) const {
   return 7;
 }
 
-Status BinaryOpBuilder::AddToModelBuilderImpl(ModelBuilder& /* model_builder */, const Node& /* node */) const {
+Status BinaryOpBuilder::AddToModelBuilderImpl(ModelBuilder& model_builder, const Node& node) const {
+  const auto& op_type(node.OpType());
+  const auto input_defs(node.InputDefs());
+
+  std::unique_ptr<COREML_SPEC::NeuralNetworkLayer> layer = std::make_unique<COREML_SPEC::NeuralNetworkLayer>();
+  layer->set_name(node.Name());
+
+  if (op_type == "Add") {
+    layer->mutable_addbroadcastable();
+  } else {
+    return ORT_MAKE_STATUS(ONNXRUNTIME, INVALID_ARGUMENT, "UnaryOpBuilder, unknown op: ", op_type);
+  }
+
+  *layer->mutable_input()->Add() = input_defs[0]->Name();
+  *layer->mutable_input()->Add() = input_defs[1]->Name();
+  *layer->mutable_output()->Add() = node.OutputDefs()[0]->Name();
+
+  model_builder.AddLayer(layer.release());
   return Status::OK();
 }
 

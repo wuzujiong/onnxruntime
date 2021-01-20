@@ -19,8 +19,15 @@ bool HasRequiredBaseOS() {
     return false;
 }
 
-std::string GetOSTempPath() {
-  return std::string([NSTemporaryDirectory() UTF8String]);
+std::string GetTemporaryFilePath() {
+  // Get temporary directory.
+  NSURL* temporary_directory_url = [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES];
+  // Generate a Unique file name to use.
+  NSString* temporary_filename = [[NSProcessInfo processInfo] globallyUniqueString];
+  // Create URL to that file.
+  NSURL* temporary_file_url = [temporary_directory_url URLByAppendingPathComponent:temporary_filename];
+
+  return std::string([[temporary_file_url path] UTF8String]);
 }
 
 }  // namespace util

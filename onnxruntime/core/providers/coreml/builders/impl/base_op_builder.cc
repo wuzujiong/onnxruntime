@@ -36,9 +36,10 @@ bool HasExternalInitializer(const InitializedTensorSet& initializers, const Node
 
 Status BaseOpBuilder::AddToModelBuilder(ModelBuilder& model_builder, const Node& node) const {
   ORT_RETURN_IF_NOT(
-      IsOpSupported(model_builder.GetGraphViewer().GetAllInitializedTensors(), node),
+      IsOpSupported(model_builder.GetInitializerTensors(), node),
       "Unsupported operator ",
       node.OpType());
+
   ORT_RETURN_IF_ERROR(AddToModelBuilderImpl(model_builder, node));
   LOGS_DEFAULT(VERBOSE) << "Operator name: [" << node.Name()
                         << "] type: [" << node.OpType() << "] was added";

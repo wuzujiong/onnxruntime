@@ -7,6 +7,7 @@
 
 #include "core/common/common.h"
 #include "core/graph/onnx_protobuf.h"
+#include "core/providers/coreml/builders/helper.h"
 #include "host_utils.h"
 #include "model.h"
 
@@ -75,22 +76,22 @@
   if (it != inputs_->end()) {
     auto& input = it->second;
     NSMutableArray* shape = [[NSMutableArray alloc] init];
-    for (const auto dim : input.shape) {
+    for (const auto dim : input.tensor_info.shape) {
       [shape addObject:[NSNumber numberWithLongLong:dim]];
     }
 
     NSMutableArray* strides = [[NSMutableArray alloc] init];
     int64_t stride = 1;
-    for (int i = static_cast<int>(input.shape.size()) - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(input.tensor_info.shape.size()) - 1; i >= 0; i--) {
       [strides insertObject:[NSNumber numberWithLongLong:stride]
                     atIndex:0];
 
-      stride *= input.shape[i];
+      stride *= input.tensor_info.shape[i];
     }
 
     MLMultiArrayDataType data_type = MLMultiArrayDataTypeFloat32;
-    if (input.data_type != ONNX_NAMESPACE::TensorProto_DataType_FLOAT) {
-      NSLog(@"Input data type is not float, actual type: %i", input.data_type);
+    if (input.tensor_info.data_type != ONNX_NAMESPACE::TensorProto_DataType_FLOAT) {
+      NSLog(@"Input data type is not float, actual type: %i", input.tensor_info.data_type);
       return nil;
     }
 
@@ -211,12 +212,15 @@
 
     auto& output_tensor = output.second;
     size_t num_elements =
-        accumulate(output_tensor.shape.begin(), output_tensor.shape.end(), 1, std::multiplies<int64_t>());
+        accumulate(output_tensor.tensor_info.shape.begin(),
+                   output_tensor.tensor_info.shape.end(),
+                   1,
+                   std::multiplies<int64_t>());
 
-    if (output_tensor.data_type != ONNX_NAMESPACE::TensorProto_DataType_FLOAT) {
+    if (output_tensor.tensor_info.data_type != ONNX_NAMESPACE::TensorProto_DataType_FLOAT) {
       return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL,
                              "Input data type is not float, actual type: ",
-                             output_tensor.data_type);
+                             output_tensor.tensor_info.data_type);
     }
 
     // Delete
@@ -288,6 +292,14 @@ Status Model::LoadModel() {
 Status Model::Predict(const std::unordered_map<std::string, OnnxTensorData>& inputs,
                       const std::unordered_map<std::string, OnnxTensorData>& outputs) {
   return execution_->Predict(inputs, outputs);
+}
+
+bool Model::IsScalarOutput(const std::string& output_name) const {
+  return Contains(scalar_outputs_, output_name);
+}
+
+const OnnxTensorInfo& Model::GetInputOutputInfo(const std::string& name) const {
+  return input_output_info_.at(name);
 }
 
 }  // namespace coreml

@@ -30,8 +30,9 @@ class CoreMLExecutionProvider : public IExecutionProvider {
 
  private:
   // unique counter to name each fused kernel across the entire model
-  // mutable int metadef_id_{0};
+  mutable int metadef_id_{0};
 
-  std::unordered_map<std::string, std::unique_ptr<onnxruntime::coreml::Model>> coreml_models_;
+  // <fused_node_name, <coreml_model_file_path, compiled_coreml_model>>
+  std::unordered_map<std::string, std::pair<std::string, std::unique_ptr<onnxruntime::coreml::Model>>> coreml_models_;
 };
 }  // namespace onnxruntime

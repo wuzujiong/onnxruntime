@@ -19,8 +19,8 @@ namespace util {
 // This corresponds to [CoreML Specification Version 4 (Core ML 3)]
 bool HasRequiredBaseOS();
 
-// Get the macOS/iOS temp folder for converted models
-std::string GetOSTempPath();
+// Get a temporary macOS/iOS temp file path
+std::string GetTemporaryFilePath();
 
 }  // namespace util
 }  // namespace coreml
