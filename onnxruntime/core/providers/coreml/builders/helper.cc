@@ -37,7 +37,7 @@ bool IsNodeSupported(const Node& node, const GraphViewer& graph_viewer) {
 
 std::vector<std::vector<size_t>> GetSupportedNodes(const GraphViewer& graph_viewer) {
   std::vector<std::vector<size_t>> supported_node_vecs;
-  if (util::HasRequiredBaseOS()) {
+  if (!util::HasRequiredBaseOS()) {
     LOGS_DEFAULT(WARNING) << "All ops will fallback to CPU EP, because we do not have supported OS";
     return supported_node_vecs;
   }

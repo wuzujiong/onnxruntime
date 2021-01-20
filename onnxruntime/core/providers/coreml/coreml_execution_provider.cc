@@ -281,11 +281,43 @@ common::Status CoreMLExecutionProvider::Compile(const std::vector<FusedNodeAndGr
         outputs.reserve(model_outputs.size());
         for (size_t i = 0; i < model_outputs.size(); i++) {
           const auto& output_name = model_outputs[i];
-          (void)output_name;
-        }
-      }
+          const auto& output_info = model->GetInputOutputInfo(output_name);
+          auto output_shape = output_info.shape;
+          auto output_type = output_info.data_type;
 
-      return ORT_MAKE_STATUS(ONNXRUNTIME, NOT_IMPLEMENTED, "Compute is not supported in this build.");
+          // Since CoreML EP use {1} MLMultiArray as scalar, if the model output should have empty shape
+          // We are going to replace the {1} shape of the output back to {}
+          if (model->IsScalarOutput(output_name))
+            output_shape.clear();
+
+          auto* output_tensor = ort.KernelContext_GetOutput(context, i,
+                                                            output_shape.data(),
+                                                            output_shape.size());
+
+          void* output_buffer;
+          switch (output_type) {
+            case ONNX_NAMESPACE::TensorProto_DataType_FLOAT:
+              output_buffer = ort.GetTensorMutableData<float>(output_tensor);
+              break;
+            default:
+              return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL,
+                                     "Unsupported output name: ", output_name, ", type: ", output_type);
+              break;
+          }
+
+          outputs.emplace(
+              output_name,
+              coreml::OnnxTensorData{
+                  coreml::OnnxTensorInfo{
+                      output_type,
+                      output_shape,
+                  },
+                  output_buffer,
+              });
+        }
+
+        return model->Predict(inputs, outputs);
+      }
     };
 
     node_compute_funcs.push_back(compute_info);

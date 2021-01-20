@@ -147,7 +147,7 @@
   NSURL* compileUrl = [MLModel compileModelAtURL:modelUrl error:&error];
 
   if (error != nil) {
-    return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Error compiling model",
+    return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "Error compiling model ",
                            [[error localizedDescription] cStringUsingEncoding:NSUTF8StringEncoding]);
   }
 

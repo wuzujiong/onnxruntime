@@ -13,12 +13,11 @@ namespace onnxruntime {
 namespace coreml {
 
 ModelBuilder::ModelBuilder(const GraphViewer& graph_viewer)
-    : graph_viewer_(graph_viewer),
-      coreml_model_(onnxruntime::make_unique<CoreML::Specification::Model>()) {
-  (void)graph_viewer_;
+    : graph_viewer_(graph_viewer) {
 }
 
-Status ModelBuilder::Prepare() {
+Status ModelBuilder::Initialize() {
+  coreml_model_ = onnxruntime::make_unique<CoreML::Specification::Model>();
   {  // initialize CoreML model
     // We support CorelML Specification Version 4 (Core ML 3)
     coreml_model_->set_specificationversion(4);
@@ -62,7 +61,7 @@ Status ModelBuilder::RegisterInitializers() {
 Status ModelBuilder::RegisterModelInputOutput(const NodeArg& node_arg, bool is_input) {
   auto* model_description = coreml_model_->mutable_description();
   auto& input_output = is_input
-                           ? *model_description->mutable_output()->Add()
+                           ? *model_description->mutable_input()->Add()
                            : *model_description->mutable_output()->Add();
 
   const auto& name = node_arg.Name();
@@ -162,16 +161,22 @@ Status ModelBuilder::RegisterModelOutputs() {
 }
 
 Status ModelBuilder::Compile(std::unique_ptr<Model>& model, const std::string& path) {
-  ORT_RETURN_IF_ERROR(Prepare());
   ORT_RETURN_IF_ERROR(SaveCoreMLModel(path));
   model = onnxruntime::make_unique<Model>(path);
   model->SetScalarOutputs(std::move(scalar_outputs_));
+  model->SetInputOutputInfo(std::move(input_output_info_));
   return Status::OK();
 }
 
 Status ModelBuilder::SaveCoreMLModel(const std::string& path) {
+  ORT_RETURN_IF_ERROR(Initialize());
   std::ofstream stream(path, std::ofstream::out | std::ofstream::binary);
   ORT_RETURN_IF_NOT(coreml_model_->SerializeToOstream(&stream), "Save the CoreML model failed");
+
+  // Delete, debug only
+  std::ofstream temp_stream("/Users/gwang/temp/aaa.mlmodel", std::ofstream::out | std::ofstream::binary);
+  ORT_RETURN_IF_NOT(coreml_model_->SerializeToOstream(&temp_stream), "Save the CoreML model failed");
+
   return Status::OK();
 }
 

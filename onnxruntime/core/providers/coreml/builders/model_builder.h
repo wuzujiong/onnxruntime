@@ -42,7 +42,7 @@ class ModelBuilder {
   std::unordered_map<std::string, OnnxTensorInfo> input_output_info_;
 
   // Convert the onnx model to CoreML::Specification::Model
-  Status Prepare() ORT_MUST_USE_RESULT;
+  Status Initialize() ORT_MUST_USE_RESULT;
 
   // If a CoreML operation will use initializers directly, we will add the initializers to the skip list
   void PreprocessInitializers();
