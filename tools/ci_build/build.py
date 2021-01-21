@@ -651,7 +651,6 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
         "-Donnxruntime_DNNL_GPU_RUNTIME=" + (args.dnnl_gpu_runtime if args.use_dnnl else ""),
         "-Donnxruntime_DNNL_OPENCL_ROOT=" + (args.dnnl_opencl_root if args.use_dnnl else ""),
         "-Donnxruntime_USE_NNAPI_BUILTIN=" + ("ON" if args.use_nnapi else "OFF"),
-        "-Donnxruntime_USE_COREML=" + ("ON" if args.use_coreml else "OFF"),
         "-Donnxruntime_USE_RKNPU=" + ("ON" if args.use_rknpu else "OFF"),
         "-Donnxruntime_USE_OPENMP=" + (
             "ON" if args.use_openmp and not (
@@ -819,6 +818,11 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
             cmake_args += ["-T", "buildsystem=1"]
         if args.apple_deploy_target:
             cmake_args += ["-DCMAKE_OSX_DEPLOYMENT_TARGET=" + args.apple_deploy_target]
+
+    if args.use_coreml:
+        if not is_macOS():
+            raise BuildError("Build CoreML EP requires macOS")
+        cmake_args += ["-Donnxruntime_USE_COREML=ON"]
 
     if args.ios:
         if is_macOS():
