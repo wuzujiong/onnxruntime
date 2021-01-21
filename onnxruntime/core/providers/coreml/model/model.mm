@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/common/common.h"
+#include "core/common/logging/logging.h"
 #include "core/graph/onnx_protobuf.h"
 #include "core/providers/coreml/builders/helper.h"
 #include "host_utils.h"
@@ -91,7 +92,8 @@
 
     MLMultiArrayDataType data_type = MLMultiArrayDataTypeFloat32;
     if (input.tensor_info.data_type != ONNX_NAMESPACE::TensorProto_DataType_FLOAT) {
-      NSLog(@"Input data type is not float, actual type: %i", input.tensor_info.data_type);
+      LOGS_DEFAULT(WARNING) << "Input data type is not float, actual type: "
+                            << input.tensor_info.data_type;
       return nil;
     }
 
@@ -103,8 +105,8 @@
                                                           deallocator:(^(void* /* bytes */){
                                                                       })error:&error];
     if (error != nil) {
-      NSLog(@"Failed to create MLMultiArray for feature %@ error: %@", featureName,
-            [error localizedDescription]);
+      LOGS_DEFAULT(WARNING) << "Failed to create MLMultiArray for feature: " << [featureName UTF8String]
+                            << ", error: " << [[error localizedDescription] UTF8String];
       return nil;
     }
 
@@ -132,7 +134,7 @@
     compiled_model_path_ = nil;
 
     if (error != nil) {
-      NSLog(@"Failed cleaning up compiled model: %@", [error localizedDescription]);
+      LOGS_DEFAULT(WARNING) << "Failed cleaning up compiled model: " << [[error localizedDescription] UTF8String];
     }
   }
 }
@@ -238,6 +240,8 @@
 namespace onnxruntime {
 namespace coreml {
 
+// Internal Execution class
+// This class will bridge Model (c++) with CoreMLExecution (objective c++)
 class Execution {
  public:
   Execution(const std::string& path);
@@ -257,8 +261,10 @@ Execution::Execution(const std::string& path) {
 }
 
 Status Execution::LoadModel() {
-  if (model_loaded)
+  if (model_loaded) {
     return Status::OK();
+  }
+
   if (HAS_VALID_BASE_OS_VERSION) {
     auto status = [execution_ loadModel];
     model_loaded = status.IsOK();
