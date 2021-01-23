@@ -192,7 +192,7 @@
 
   MLPredictionOptions* options = [[MLPredictionOptions alloc] init];
   // TODO add options
-  // options.usesCPUOnly = YES;
+  options.usesCPUOnly = YES;
   NSError* error = nil;
   id<MLFeatureProvider> output_feature = [_model predictionFromFeatures:input_feature
                                                                 options:options
