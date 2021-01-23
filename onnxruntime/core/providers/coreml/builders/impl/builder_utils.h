@@ -16,7 +16,7 @@ class WeightParams;
 namespace onnxruntime {
 namespace coreml {
 
-common::Status CreateCoreMLWeight(CoreML::Specification::WeightParams* weight,
+common::Status CreateCoreMLWeight(CoreML::Specification::WeightParams& weight,
                                   const ONNX_NAMESPACE::TensorProto& tensor);
 
 }  // namespace coreml

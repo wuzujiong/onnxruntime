@@ -57,8 +57,6 @@ void ModelBuilder::PreprocessInitializers() {
 }
 
 Status ModelBuilder::RegisterInitializers() {
-  // TODO, create LoadConstantNDLayer(s) for initializers
-
   for (const auto& pair : GetInitializerTensors()) {
     const auto& tensor = *pair.second;
     const auto& name = tensor.name();
@@ -67,13 +65,20 @@ Status ModelBuilder::RegisterInitializers() {
 
     std::unique_ptr<COREML_SPEC::NeuralNetworkLayer> layer = std::make_unique<COREML_SPEC::NeuralNetworkLayer>();
     layer->set_name(name);
-    auto* constant_tensor = layer->mutable_loadconstant();
+    // TODO,look at using LoadConstantLayer instead of LoadConstantNDLayer
+    auto* constant_tensor = layer->mutable_loadconstantnd();
     const auto& shape = tensor.dims();
-    std::transform(shape.cbegin(), shape.cend(),
-                   google::protobuf::RepeatedFieldBackInserter(constant_tensor->mutable_shape()),
-                   [](int64_t dim) -> uint64_t { return SafeInt<uint64_t>(dim); });
+    if (shape.empty()) {
+      constant_tensor->mutable_shape()->Add(1);
+    } else {
+      std::transform(shape.cbegin(), shape.cend(),
+                     google::protobuf::RepeatedFieldBackInserter(constant_tensor->mutable_shape()),
+                     [](int64_t dim) -> uint64_t { return SafeInt<uint64_t>(dim); });
+    }
 
-    CreateCoreMLWeight(constant_tensor->mutable_data(), tensor);
+    CreateCoreMLWeight(*constant_tensor->mutable_data(), tensor);
+    *layer->mutable_output()->Add() = name;
+    AddLayer(layer.release());
   }
 
   return Status::OK();
