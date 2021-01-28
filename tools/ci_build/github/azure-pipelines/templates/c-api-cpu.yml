@@ -73,11 +73,14 @@ jobs:
       artifactName: 'drop-onnxruntime-java-osx-x64'
       targetPath: '$(Build.BinariesDirectory)\java-artifact\onnxruntime-java-osx-x64'
  
-  - task: BatchScript@1
-    displayName: 'Jar packaging'
+  - task: PowerShell@2
+    displayName: 'PowerShell Script'
     inputs:
-      filename: $(Build.SourcesDirectory)\tools\ci_build\github\windows\jar_packaging.ps1
-      workingFolder: '$(Build.BinariesDirectory)\java-artifact'
+      targetType: filePath
+      filePath: $(Build.SourcesDirectory)\tools\ci_build\github\windows\jar_packaging.ps1
+      failOnStderr: true
+      showWarnings: true
+      workingDirectory: '$(Build.BinariesDirectory)\java-artifact'
 
   - task: PublishPipelineArtifact@1
     inputs:
