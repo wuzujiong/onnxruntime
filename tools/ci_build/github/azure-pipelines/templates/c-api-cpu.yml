@@ -36,6 +36,8 @@ jobs:
   pool: 'Win-CPU-2019'
   condition: succeeded()
   steps:
+  - checkout: self
+    submodules: false
   - template: set-version-number-variables-step.yml
 
   - task: DownloadPipelineArtifact@2
