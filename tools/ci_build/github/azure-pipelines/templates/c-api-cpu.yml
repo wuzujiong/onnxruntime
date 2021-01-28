@@ -34,10 +34,6 @@ jobs:
   workspace:
     clean: all
   pool: 'Win-CPU-2019'
-  dependsOn:
-  - Linux_C_API_Packaging_CPU_x64
-  - MacOS_C_API_Packaging_CPU_x64
-  - Windows_Packaging_CPU
   condition: succeeded()
   steps:
   - template: set-version-number-variables-step.yml
