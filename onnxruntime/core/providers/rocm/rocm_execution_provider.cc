@@ -65,7 +65,7 @@ ROCMExecutionProvider::PerThreadContext::PerThreadContext(OrtDevice::DeviceId de
 
   AllocatorCreationInfo default_memory_info(
       [](OrtDevice::DeviceId id) {
-        return onnxruntime::make_unique<ROCMAllocator>(id, CUDA);
+        return onnxruntime::make_unique<ROCMAllocator>(id, GPU);
       },
       device_id,
       true,
@@ -110,7 +110,7 @@ ROCMExecutionProvider::ROCMExecutionProvider(const ROCMExecutionProviderInfo& in
 
   AllocatorCreationInfo default_memory_info(
       [](OrtDevice::DeviceId device_id) {
-        return onnxruntime::make_unique<ROCMAllocator>(device_id, CUDA);
+        return onnxruntime::make_unique<ROCMAllocator>(device_id, GPU);
       },
       info_.device_id,
       true,
