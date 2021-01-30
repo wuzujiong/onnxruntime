@@ -37,8 +37,12 @@
     * [iOS](#iOS)
 
 **[Training](#Training)**
+ * [Baseline CPU](#baseline-cpu)
+   * Traning Enabled Execution Providers
+     * [NVIDIA CUDA](#cuda-training)
+     * [ROCM](#ROCM)
+	 * [Intel DNNL/MKL-ML](#dnnl-training)
 
-***
 # Inferencing
 ## Start: Baseline CPU
 
@@ -133,6 +137,7 @@ GCC 4.x and below are not supported.
 |**Use OpenMP**|--use_openmp|OpenMP will parallelize some of the code for potential performance improvements. This is not recommended for running on single threads.|
 |**Build using parallel processing**|--parallel|This is strongly recommended to speed up the build.|
 |**Build Shared Library**|--build_shared_lib||
+|**Enable Training support**|--enable_training||
 
 ### APIs and Language Bindings
 |API|Command|Additional details|
@@ -339,7 +344,7 @@ Note that DNNL is built as a [shared provider library](#Execution-Provider-Share
 
 To build for Intel GPU, replace dnnl_opencl_root with the path of the Intel SDK for OpenCL Applications.
 
-##### Windows 
+##### Windows
 
 `.\build.bat --use_dnnl --dnnl_gpu_runtime ocl --dnnl_opencl_root "c:\program files (x86)\intelswtools\sw_dev_tools\opencl\sdk"`
 
@@ -360,7 +365,7 @@ See more information on the OpenVINO Execution Provider [here](./docs/execution_
 
    Follow [documentation](https://docs.openvinotoolkit.org/2021.2/index.html) for detailed instructions.
 
-  *2021.2 is the recommended OpenVINO version. [OpenVINO 2020.2](https://docs.openvinotoolkit.org/2020.2/index.html) is minimal OpenVINO version requirement.*
+  *2021.2 is the recommended OpenVINO version. [OpenVINO 2020.3](https://docs.openvinotoolkit.org/2020.3/index.html) is minimal OpenVINO version requirement.*
   *The minimum ubuntu version to support 2021.2 is 18.04.*
 
 2. Configure the target hardware with specific follow on instructions:
@@ -1178,8 +1183,32 @@ Dockerfile instructions are available [here](./dockerfiles#migraphx)
 ***
 
 # Training
-## CUDA
-### Prerequisites
+
+## Baseline CPU
+
+### Build Instructions
+To build ORT with training support add `--enable_training` build instruction.
+
+All other build options are the same for inferencing as they are for training.
+
+#### Windows
+```
+.\build.bat --config RelWithDebInfo --build_shared_lib --parallel --enable_training
+```
+
+The default Windows CMake Generator is Visual Studio 2017, but you can also use the newer Visual Studio 2019 by passing
+`--cmake_generator "Visual Studio 16 2019"` to `.\build.bat`
+
+
+#### Linux/macOS
+```
+./build.sh --config RelWithDebInfo --build_shared_lib --parallel --enable_training
+```
+
+## Training Enabled Execution Providers
+
+### <a id="cuda-training">CUDA</a>
+#### Prerequisites
 
 The default NVIDIA GPU build requires CUDA runtime libraries installed on the system:
 
@@ -1191,7 +1220,7 @@ The default NVIDIA GPU build requires CUDA runtime libraries installed on the sy
 
 These dependency versions should reflect what is in [Dockerfile.training](./dockerfiles/Dockerfile.training).
 
-### Build instructions
+#### Build instructions
 
 1. Checkout this code repo with `git clone https://github.com/microsoft/onnxruntime`
 
@@ -1213,8 +1242,8 @@ These dependency versions should reflect what is in [Dockerfile.training](./dock
 
     This produces the .whl file in `./build/Linux/RelWithDebInfo/dist` for ONNX Runtime Training.
 
-## ROCM
-### Prerequisites
+### ROCM
+#### Prerequisites
 
 The default AMD GPU build requires ROCM software toolkit installed on the system:
 
@@ -1234,3 +1263,18 @@ These dependency versions should reflect what is in [Dockerfile.training](./dock
    * Run `./build.sh --config RelWithDebInfo --enable_training --build_wheel --use_rocm --rocm_home /opt/rocm --nccl_home /opt/rocm --mpi_home <location for openmpi>`
 
     This produces the .whl file in `./build/Linux/RelWithDebInfo/dist` for ONNX Runtime Training.
+
+### <a id="dnnl-training"> DNNL and MKLML </a>
+
+#### Build Instructions
+##### Linux
+
+`./build.sh --enable_training --use_dnnl`
+
+##### Windows
+
+`.\build.bat --enable_training --use_dnnl`
+
+Add `--build_wheel` to build the ONNX Runtime wheel
+
+This will produce a .whl file in `build/Linux/RelWithDebInfo/dist` for ONNX Runtime Training
