@@ -21,7 +21,10 @@ class NodeAttrHelper {
   NodeAttrHelper(const onnxruntime::Node& node);
 
   float Get(const std::string& key, float def_val) const;
+
   int32_t Get(const std::string& key, int32_t def_val) const;
+  int64_t Get(const std::string& key, int64_t def_val) const;
+
   std::string Get(const std::string& key, const std::string& def_val) const;
 
   std::vector<int64_t> Get(const std::string& key, const std::vector<int64_t>& def_val) const;
