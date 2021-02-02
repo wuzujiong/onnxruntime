@@ -91,21 +91,26 @@ def _ort_output_to_torch_tensor(ort_output):
 def _extract_input_information(module, *inputs, **kwargs):
     '''Returns the all input names, dynamic_axes information and input names that require gradient'''
 
-    # Ignore optional *inputs explicitly specified as None
+    # Ignore optional inputs explicitly specified as None
     sig = signature(module.forward)
     all_input_names = sig.parameters.keys()
     input_names = []
     dynamic_axes = {}
     input_names_require_grad = []
     for input_idx, name in enumerate(all_input_names):
+        inp = None
         if input_idx < len(inputs) and inputs[input_idx] is not None:
-            if inputs[input_idx].requires_grad:
+            inp = inputs[input_idx]
+        elif name in kwargs and kwargs[name] is not None:
+            inp = kwargs[name]
+        if inp is not None:
+            if inp.requires_grad:
                 # input_names_require_grad holds all input tensors that have requires_grad
                 input_names_require_grad.append(name)
 
             input_names.append(name)
             dynamic_axes[name] = {}
-            for dim_idx in range(len(inputs[input_idx].shape)):
+            for dim_idx in range(len(inp.shape)):
                 dynamic_axes[name].update({dim_idx : f'input{input_idx}_dim{dim_idx}'})
 
     return input_names, dynamic_axes, input_names_require_grad
@@ -113,7 +118,7 @@ def _extract_input_information(module, *inputs, **kwargs):
 class ORTModule(torch.nn.Module):
 
     def __init__(self, module):
-        assert isinstance(module, torch.nn.Module), "'module' mst be a torch.nn.Module"
+        assert isinstance(module, torch.nn.Module), "'module' must be a torch.nn.Module"
         super(ORTModule, self).__init__()
 
         self._export_again = False
@@ -268,6 +273,9 @@ class ORTModule(torch.nn.Module):
             self._initialize_module_gradient_graph_builder()
 
         new_input_shape = [list(input.size()) for input in inputs if input is not None]
+        for k, v in kwargs.items():
+            if v is not None:
+                new_input_shape.append(list(v.size()))
         if self._current_input_shape is None or self._current_input_shape != new_input_shape:
             self._current_input_shape = new_input_shape
             self._split_training_graph(*inputs, **kwargs)
@@ -282,7 +290,9 @@ class ORTModule(torch.nn.Module):
             def forward(ctx, *inputs, **kwargs):
                 '''Performs forward pass based on user input and PyTorch initializer
 
-                TODO: **kwargs are not supported
+                Autograd Function's apply() doesn't support keyword arguments,
+                so `*inputs` has all the arguments - keyword arguments converted
+                to positional by the caller.
 
                 Model outputs are returned to the user
                 The following tensors are stashed (in order) for backward pass
@@ -360,7 +370,6 @@ class ORTModule(torch.nn.Module):
     def _convert_forward_input_to_list(self, *inputs, **kwargs):
         '''Creates forward `*inputs` list from user input and PyTorch initializers
 
-        TODO: **kwargs is not supported
         TODO: How IO binding model inputs and outputs affects initializer copies?
 
         ONNX Runtime forward requires an order list of:
@@ -372,6 +381,10 @@ class ORTModule(torch.nn.Module):
         '''
         # User inputs
         result = list(inputs[:len(self._onnx_graphs_info.user_input_names)])
+        for i in range(len(self._onnx_graphs_info.user_input_names)):
+            input_name = self._onnx_graphs_info.user_input_names[i]
+            if input_name in kwargs and kwargs[input_name] is not None:
+                result.append(kwargs[input_name])
 
         # Initializers
         for param in self._original_module.named_parameters():
@@ -382,7 +395,6 @@ class ORTModule(torch.nn.Module):
     @_utils.timeit(enabled=__TEMP_ENABLE_METHOD_TIMING__)
     def _convert_forward_input_list_to_dict(self, *inputs):
         '''Convert forward `*inputs` list to dict
-
         TODO: Input gradient is being ignored for MVP
         '''
         # Dictionary containing both inputs and initializers
@@ -440,7 +452,6 @@ class ORTModule(torch.nn.Module):
         '''Exports PyTorch `module` to ONNX with training flag, using `*inputs` as input
 
         TODO: How to support dynamic axes? Dimensions are determined by samples
-        TODO: How to ingest **kwargs in proper order during export?
         '''
         # Export the model to memory
         f = io.BytesIO()
@@ -453,6 +464,11 @@ class ORTModule(torch.nn.Module):
             sample_inputs_copy.append(model_input.data if isinstance(model_input, torch.Tensor) else model_input)
         sample_inputs_copy = copy.deepcopy(tuple(sample_inputs_copy))
 
+        sample_kwargs_copy = {}
+        for name, model_input in kwargs.items():
+            sample_kwargs_copy[name] = model_input.data if isinstance(model_input, torch.Tensor) else model_input
+        sample_kwargs_copy = copy.deepcopy(sample_kwargs_copy)
+
         # TODO: Support contrib OPs support? user model has no hint
         # from onnxruntime.training import register_custom_ops_pytorch_exporter
         # register_custom_ops_pytorch_exporter.register_custom_op()
@@ -460,7 +476,7 @@ class ORTModule(torch.nn.Module):
         with torch.no_grad():
             # Export torch.nn.Module to ONNX
             torch.onnx.export(self._original_module,
-                              sample_inputs_copy,
+                              sample_inputs_copy + (sample_kwargs_copy, ),
                               f,
                               input_names=input_names,
                               opset_version=ONNX_OPSET_VERSION,
